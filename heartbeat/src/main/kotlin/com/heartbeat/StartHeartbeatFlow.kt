@@ -20,7 +20,7 @@ import net.corda.core.utilities.ProgressTracker
  */
 @InitiatingFlow
 @StartableByRPC
-class StartHeartbeatFlow : FlowLogic<Unit>() {
+class StartHeartbeatFlow(val ownerId: String) : FlowLogic<Unit>() {
     companion object {
         object GENERATING_TRANSACTION : ProgressTracker.Step("Generating a HeartState transaction.")
         object SIGNING_TRANSACTION : ProgressTracker.Step("Signing transaction with our private key.")
@@ -40,7 +40,10 @@ class StartHeartbeatFlow : FlowLogic<Unit>() {
     @Suspendable
     override fun call() {
         progressTracker.currentStep = GENERATING_TRANSACTION
-        val output = HeartState(ourIdentity)
+
+        // val output = HeartState(ownerId, ourIdentity)
+        val output = HeartState(ownerId, 0, ourIdentity)
+
         val cmd = Command(HeartContract.Commands.Beat(), ourIdentity.owningKey)
         val txBuilder = TransactionBuilder(serviceHub.networkMapCache.notaryIdentities.first())
                 .addOutputState(output, HeartContract.contractID)

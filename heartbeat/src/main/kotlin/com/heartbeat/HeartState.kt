@@ -1,11 +1,11 @@
 package com.heartbeat
 
-import net.corda.core.contracts.BelongsToContract
-import net.corda.core.contracts.SchedulableState
-import net.corda.core.contracts.ScheduledActivity
-import net.corda.core.contracts.StateRef
+import net.corda.core.contracts.*
 import net.corda.core.flows.FlowLogicRefFactory
 import net.corda.core.identity.Party
+import net.corda.core.schemas.MappedSchema
+import net.corda.core.schemas.PersistentState
+import net.corda.core.schemas.QueryableState
 import java.time.Instant
 
 /**
@@ -16,10 +16,13 @@ import java.time.Instant
  * @property nextActivityTime When the scheduled activity should be kicked off.
  */
 @BelongsToContract(HeartContract::class)
-class HeartState(
+data class HeartState(
+        private var ownerId: String,
+        private var count: Int,
         private val me: Party,
-        private val nextActivityTime: Instant = Instant.now().plusSeconds(1)
-) : SchedulableState {
+        private val nextActivityTime: Instant = Instant.now().plusSeconds(10),
+        override val linearId: UniqueIdentifier = UniqueIdentifier()
+) : SchedulableState, LinearState, QueryableState {
 
     override val participants get() = listOf(me)
 
@@ -32,4 +35,22 @@ class HeartState(
         return ScheduledActivity(flowLogicRefFactory.create(HeartbeatFlow::class.java, thisStateRef), nextActivityTime)
     }
 
+
+
+    override fun generateMappedObject(schema: MappedSchema): PersistentState {
+        return when (schema) {
+            is BeatSchemaV1 -> BeatSchemaV1.Beat(
+                    ownerId,
+                    count,
+                    this.linearId.id
+            )
+            else -> throw IllegalArgumentException("Unrecognised schema $schema")
+        }
+    }
+
+    override fun supportedSchemas(): Iterable<MappedSchema> = listOf(BeatSchemaV1)
+
+    fun beat() = copy(count = count.plus(1), nextActivityTime = Instant.now().plusSeconds(10))
+
+    fun me() = ownerId
 }

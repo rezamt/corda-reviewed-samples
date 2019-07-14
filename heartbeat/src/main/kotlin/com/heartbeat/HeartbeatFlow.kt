@@ -41,8 +41,15 @@ class HeartbeatFlow(private val stateRef: StateRef) : FlowLogic<String>() {
     @Suspendable
     override fun call(): String {
         progressTracker.currentStep = GENERATING_TRANSACTION
+        // val input = serviceHub.toStateAndRef<HeartState>(stateRef)
+        // val output = HeartState(ourIdentity)
+
         val input = serviceHub.toStateAndRef<HeartState>(stateRef)
-        val output = HeartState(ourIdentity)
+
+        val prvBeat = input.state.data as HeartState
+
+        val output = prvBeat.beat()
+
         val beatCmd = Command(Beat(), ourIdentity.owningKey)
         val txBuilder = TransactionBuilder(serviceHub.networkMapCache.notaryIdentities.first())
                 .addInputState(input)
@@ -55,6 +62,6 @@ class HeartbeatFlow(private val stateRef: StateRef) : FlowLogic<String>() {
         progressTracker.currentStep = FINALISING_TRANSACTION
         subFlow(FinalityFlow(signedTx, listOf()))
         // The sound of a heart.
-        return "Lub-dub"
+        return "${prvBeat.me()}'s Heart: Lub-dub"
     }
 }
